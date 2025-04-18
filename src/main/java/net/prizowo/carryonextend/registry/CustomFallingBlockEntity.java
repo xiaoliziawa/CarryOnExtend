@@ -3,6 +3,8 @@ package net.prizowo.carryonextend.registry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -19,6 +21,7 @@ import net.prizowo.carryonextend.CarryOnExtend;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
+import java.util.Collection;
 
 public class CustomFallingBlockEntity extends FallingBlockEntity {
     private static final EntityDataAccessor<CompoundTag> BLOCK_DATA = SynchedEntityData.defineId(CustomFallingBlockEntity.class, EntityDataSerializers.COMPOUND_TAG);
@@ -153,9 +156,9 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                     level().getBlockEntity(finalPos).setChanged();
                 }
             }
-            else if (customData != null && !customData.isEmpty() && blockState.hasBlockEntity() &&
+            else if (customData != null && !customData.isEmpty() && 
                     !handledDrops && level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                NonNullList<ItemStack> items = NonNullListFromNBT(customData);
+                NonNullList<ItemStack> items = extractItemsFromContainer(customData);
                 if (!items.isEmpty()) {
                     Containers.dropContents(level(), finalPos, items);
                     handledDrops = true;
@@ -167,22 +170,92 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
             this.blockData = customData;
         }
     }
-    
-    private NonNullList<ItemStack> NonNullListFromNBT(CompoundTag data) {
-        NonNullList<ItemStack> items = NonNullList.create();
+
+
+    private NonNullList<ItemStack> extractItemsFromContainer(CompoundTag data) {
+        NonNullList<ItemStack> allItems = NonNullList.create();
         
-        if (data != null && data.contains("Items", 9)) {
-            net.minecraft.nbt.ListTag itemsList = data.getList("Items", 10);
-            
-            for (int i = 0; i < itemsList.size(); i++) {
-                CompoundTag itemTag = itemsList.getCompound(i);
-                ItemStack stack = ItemStack.parseOptional(level().registryAccess(), itemTag);
-                if (!stack.isEmpty()) {
-                    items.add(stack);
+        recursivelyExtractItems(data, allItems);
+        
+        return allItems;
+    }
+
+    private void recursivelyExtractItems(CompoundTag tag, Collection<ItemStack> items) {
+        if (tag == null) return;
+        
+        for (String key : tag.getAllKeys()) {
+            if (tag.contains(key, 9)) {
+                ListTag list = tag.getList(key, 10);
+                
+                boolean foundItems = false;
+                for (int i = 0; i < list.size() && i < 5; i++) {
+                    if (list.get(i) instanceof CompoundTag itemTag) {
+                        if (looksLikeItemTag(itemTag)) {
+                            foundItems = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (foundItems) {
+                    extractItemsFromList(list, items);
                 }
             }
         }
         
-        return items;
+        for (String key : tag.getAllKeys()) {
+            if (tag.contains(key, 10)) {
+                CompoundTag nestedTag = tag.getCompound(key);
+                
+                if (looksLikeItemTag(nestedTag)) {
+                    ItemStack stack = ItemStack.parseOptional(level().registryAccess(), nestedTag);
+                    if (!stack.isEmpty()) {
+                        items.add(stack);
+                    }
+                } else {
+                    recursivelyExtractItems(nestedTag, items);
+                }
+            }
+        }
+    }
+    
+    private boolean looksLikeItemTag(CompoundTag tag) {
+        if (tag.contains("id") && (tag.contains("Count") || tag.contains("count"))) {
+            return true;
+        }
+        
+        String[] itemFields = {"item", "Item", "Slot", "slot"};
+        for (String field : itemFields) {
+            if (tag.contains(field)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private void extractItemsFromList(ListTag itemsList, Collection<ItemStack> items) {
+        for (Tag tag : itemsList) {
+            if (!(tag instanceof CompoundTag itemTag)) continue;
+
+            ItemStack stack = ItemStack.parseOptional(level().registryAccess(), itemTag);
+            if (!stack.isEmpty()) {
+                items.add(stack);
+                continue;
+            }
+
+            for (String key : itemTag.getAllKeys()) {
+                if (itemTag.contains(key, 10)) {
+                    CompoundTag nestedTag = itemTag.getCompound(key);
+                    if (looksLikeItemTag(nestedTag)) {
+                        stack = ItemStack.parseOptional(level().registryAccess(), nestedTag);
+                        if (!stack.isEmpty()) {
+                            items.add(stack);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
