@@ -167,7 +167,7 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
     @SuppressWarnings("unchecked")
     private <T extends BlockEntity> BlockEntityRenderer<T> getBlockEntityRenderer(T blockEntity) {
         try {
-            return (BlockEntityRenderer<T>) Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+            return Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
         } catch (Exception e) {
             return null;
         }
