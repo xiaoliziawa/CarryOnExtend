@@ -54,13 +54,15 @@ public class BlockThrowHandler {
             lookDir.z * THROW_POWER
         );
         
+        CompoundTag blockData = blockEntity != null ? blockEntity.saveWithFullMetadata(level.registryAccess()) : new CompoundTag();
+        
         CustomFallingBlockEntity.throwBlock(
             level,
             playerPos.x,
             playerPos.y,
             playerPos.z,
             blockState,
-            blockEntity != null ? blockEntity.saveWithFullMetadata(level.registryAccess()) : new CompoundTag(),
+            blockData,
             motion
         );
         
