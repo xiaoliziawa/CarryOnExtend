@@ -71,7 +71,6 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
                 renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
             }
         } catch (Exception e) {
-            // 捕获任何异常，确保poseStack.popPose()被调用
         } finally {
             poseStack.popPose();
         }
@@ -136,7 +135,6 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
                         poseStack.translate(0.5, 0.5, 0.5);
                         blockEntityRenderer.render(blockEntity, partialTicks(), poseStack, buffer, packedLight, OverlayTexture.NO_OVERLAY);
                     } catch (Exception e) {
-                        // 捕获异常，但确保poseStack被恢复
                     } finally {
                         poseStack.popPose();
                     }
