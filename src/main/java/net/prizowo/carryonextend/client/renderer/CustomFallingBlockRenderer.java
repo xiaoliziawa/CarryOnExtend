@@ -54,24 +54,27 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
         Level level = entity.level();
 
         poseStack.pushPose();
+        try {
+            BlockPos blockPos = BlockPos.containing(entity.getX(), entity.getBoundingBox().maxY, entity.getZ());
+            poseStack.translate(-0.5, 0.0, -0.5);
 
-        BlockPos blockPos = BlockPos.containing(entity.getX(), entity.getBoundingBox().maxY, entity.getZ());
-        poseStack.translate(-0.5, 0.0, -0.5);
+            BakedModel model = this.dispatcher.getBlockModel(blockState);
 
-        BakedModel model = this.dispatcher.getBlockModel(blockState);
+            RandomSource randomSource = RandomSource.create(blockState.getSeed(entity.getStartPos()));
 
-        RandomSource randomSource = RandomSource.create(blockState.getSeed(entity.getStartPos()));
+            ModelData modelData = ModelData.EMPTY;
 
-        ModelData modelData = ModelData.EMPTY;
-
-        if (blockState.hasBlockEntity()) {
-            renderWithBlockEntity(entity, blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData);
+            if (blockState.hasBlockEntity()) {
+                renderWithBlockEntity(entity, blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData);
+            }
+            else if (blockState.getRenderShape() == RenderShape.MODEL) {
+                renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
+            }
+        } catch (Exception e) {
+            // 捕获任何异常，确保poseStack.popPose()被调用
+        } finally {
+            poseStack.popPose();
         }
-        else if (blockState.getRenderShape() == RenderShape.MODEL) {
-            renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-        }
-
-        poseStack.popPose();
 
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }
@@ -116,6 +119,8 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
             BlockEntity blockEntity = getDummyBlockEntity(blockState, blockEntityType, blockPos);
 
             if (blockEntity != null) {
+                blockEntity.setLevel(level);
+                
                 if (entity.getBlockData() != null && !entity.getBlockData().isEmpty()) {
                     try {
                         blockEntity.loadWithComponents(entity.getBlockData(), level.registryAccess());
@@ -127,16 +132,14 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
 
                 if (blockEntityRenderer != null) {
                     poseStack.pushPose();
-                    poseStack.translate(0.5, 0.5, 0.5);
                     try {
+                        poseStack.translate(0.5, 0.5, 0.5);
                         blockEntityRenderer.render(blockEntity, partialTicks(), poseStack, buffer, packedLight, OverlayTexture.NO_OVERLAY);
                     } catch (Exception e) {
+                        // 捕获异常，但确保poseStack被恢复
+                    } finally {
                         poseStack.popPose();
-                        BakedModel model = this.dispatcher.getBlockModel(blockState);
-                        renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-                        return;
                     }
-                    poseStack.popPose();
 
                     BakedModel model = this.dispatcher.getBlockModel(blockState);
                     renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
