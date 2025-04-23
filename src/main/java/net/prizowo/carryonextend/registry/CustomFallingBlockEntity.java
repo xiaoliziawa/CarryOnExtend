@@ -1,12 +1,7 @@
 package net.prizowo.carryonextend.registry;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.NonNullList;
-import net.minecraft.core.component.DataComponentPatch;
-import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -24,7 +19,6 @@ import net.prizowo.carryonextend.CarryOnExtend;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
-import java.util.Collection;
 
 public class CustomFallingBlockEntity extends FallingBlockEntity {
     private static final EntityDataAccessor<CompoundTag> BLOCK_DATA = SynchedEntityData.defineId(CustomFallingBlockEntity.class, EntityDataSerializers.COMPOUND_TAG);
@@ -95,13 +89,13 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
+    public void addAdditionalSaveData(@NotNull CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.put("CustomBlockData", this.getBlockData());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
+    public void readAdditionalSaveData(@NotNull CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         if (tag.contains("CustomBlockData")) {
             this.setBlockData(tag.getCompound("CustomBlockData"));
@@ -151,6 +145,9 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                 if (this.level().setBlock(pos, blockState, 3)) {
                     if (this.level().getBlockEntity(pos) != null && customData != null && !customData.isEmpty()) {
                         BlockEntity blockEntity = this.level().getBlockEntity(pos);
+                        if (blockEntity != null && blockEntity.getLevel() == null) {
+                            blockEntity.setLevel(this.level());
+                        }
                         blockEntity.loadWithComponents(customData, this.level().registryAccess());
                         this.level().sendBlockUpdated(pos, blockState, blockState, 3);
                         blockEntity.setChanged();
@@ -160,35 +157,20 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                 }
             } else if (onGround && !handledDrops) {
                 if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                    NonNullList<ItemStack> containerItems = NonNullList.create();
-                    if (customData != null && !customData.isEmpty()) {
-                        containerItems = extractItemsFromContainer(customData);
-
-                        customData = removeItemsData(customData.copy());
-                    }
-                    
                     ItemStack itemStack = new ItemStack(blockState.getBlock());
                     
                     if (customData != null && !customData.isEmpty() && 
                         blockState.getBlock() instanceof EntityBlock entityBlock) {
                         
-                            BlockEntity tempEntity = entityBlock.newBlockEntity(pos, blockState);
-                            if (tempEntity != null) {
-                                tempEntity.loadWithComponents(customData, this.level().registryAccess());
-                                
-                                tempEntity.saveToItem(itemStack, this.level().registryAccess());
-                                
-                            }
-                    }
-                    
-                    this.spawnAtLocation(itemStack);
-                    
-                    for (ItemStack item : containerItems) {
-                        if (!item.isEmpty()) {
-                            this.spawnAtLocation(item);
+                        BlockEntity tempEntity = entityBlock.newBlockEntity(pos, blockState);
+                        if (tempEntity != null) {
+                            tempEntity.setLevel(this.level());
+                            tempEntity.loadWithComponents(customData, this.level().registryAccess());
+                            tempEntity.saveToItem(itemStack, this.level().registryAccess());
                         }
                     }
                     
+                    this.spawnAtLocation(itemStack);
                     handledDrops = true;
                 }
                 
@@ -197,120 +179,5 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
         }
         
         this.setDeltaMovement(this.getDeltaMovement().scale(0.98D));
-    }
-
-    private static <T> void addComponentSafely(DataComponentPatch.Builder patchBuilder,
-                                               DataComponentType<?> componentType,
-                                               Object componentValue) {
-        if (componentValue == null) return;
-        
-        @SuppressWarnings("unchecked")
-            DataComponentType<T> typedComponent =
-                (DataComponentType<T>) componentType;
-            @SuppressWarnings("unchecked")
-            T typedValue = (T) componentValue;
-            
-            patchBuilder.set(typedComponent, typedValue);
-    }
-
-    private NonNullList<ItemStack> extractItemsFromContainer(CompoundTag data) {
-        NonNullList<ItemStack> allItems = NonNullList.create();
-        
-        recursivelyExtractItems(data, allItems);
-        
-        return allItems;
-    }
-
-    private void recursivelyExtractItems(CompoundTag tag, Collection<ItemStack> items) {
-        if (tag == null) return;
-        
-        for (String key : tag.getAllKeys()) {
-            if (tag.contains(key, 9)) {
-                ListTag list = tag.getList(key, 10);
-                
-                boolean foundItems = false;
-                for (int i = 0; i < list.size() && i < 5; i++) {
-                    if (list.get(i) instanceof CompoundTag itemTag) {
-                        if (looksLikeItemTag(itemTag)) {
-                            foundItems = true;
-                            break;
-                        }
-                    }
-                }
-                
-                if (foundItems) {
-                    extractItemsFromList(list, items);
-                }
-            }
-        }
-        
-        for (String key : tag.getAllKeys()) {
-            if (tag.contains(key, 10)) {
-                CompoundTag nestedTag = tag.getCompound(key);
-                
-                if (looksLikeItemTag(nestedTag)) {
-                    ItemStack stack = ItemStack.parseOptional(level().registryAccess(), nestedTag);
-                    if (!stack.isEmpty()) {
-                        items.add(stack);
-                    }
-                } else {
-                    recursivelyExtractItems(nestedTag, items);
-                }
-            }
-        }
-    }
-    
-    private boolean looksLikeItemTag(CompoundTag tag) {
-        if (tag.contains("id") && (tag.contains("Count") || tag.contains("count"))) {
-            return true;
-        }
-        
-        String[] itemFields = {"item", "Item", "Slot", "slot"};
-        for (String field : itemFields) {
-            if (tag.contains(field)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    private void extractItemsFromList(ListTag itemsList, Collection<ItemStack> items) {
-        for (Tag tag : itemsList) {
-            if (!(tag instanceof CompoundTag itemTag)) continue;
-
-            ItemStack stack = ItemStack.parseOptional(level().registryAccess(), itemTag);
-            if (!stack.isEmpty()) {
-                items.add(stack);
-                continue;
-            }
-
-            for (String key : itemTag.getAllKeys()) {
-                if (itemTag.contains(key, 10)) {
-                    CompoundTag nestedTag = itemTag.getCompound(key);
-                    if (looksLikeItemTag(nestedTag)) {
-                        stack = ItemStack.parseOptional(level().registryAccess(), nestedTag);
-                        if (!stack.isEmpty()) {
-                            items.add(stack);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private CompoundTag removeItemsData(CompoundTag data) {
-        if (data == null) return new CompoundTag();
-        
-        String[] commonItemContainers = {"Items", "Inventory", "item_inventory", "inventory", "Container"};
-        
-        for (String containerTag : commonItemContainers) {
-            if (data.contains(containerTag, 9)) {
-                data.remove(containerTag);
-            }
-        }
-        
-        return data;
     }
 }
