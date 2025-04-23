@@ -2,19 +2,22 @@ package net.prizowo.carryonextend.registry;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.world.Containers;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.prizowo.carryonextend.CarryOnExtend;
@@ -36,21 +39,12 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
         try {
             blockStateField = FallingBlockEntity.class.getDeclaredField("blockState");
             blockStateField.setAccessible(true);
-            
-            try {
+
                 cancelDropField = FallingBlockEntity.class.getDeclaredField("cancelDrop");
                 cancelDropField.setAccessible(true);
-            } catch (NoSuchFieldException e) {
-                CarryOnExtend.LOGGER.warn("Unable to obtain the cancelDrop field of FallingBlockEntity", e);
-            }
-            
-            try {
+
                 timeField = FallingBlockEntity.class.getDeclaredField("time");
                 timeField.setAccessible(true);
-            } catch (NoSuchFieldException e) {
-                CarryOnExtend.LOGGER.warn("Unable to retrieve the time field of FallingBlockEntity", e);
-            }
-            
         } catch (NoSuchFieldException e) {
             CarryOnExtend.LOGGER.error("Unable to retrieve the blockState field of FallingBlockEntity", e);
         }
@@ -62,7 +56,7 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
 
     public static CustomFallingBlockEntity throwBlock(Level level, double x, double y, double z, BlockState state, CompoundTag blockData, Vec3 motion) {
         CustomFallingBlockEntity entity = new CustomFallingBlockEntity(
-                net.prizowo.carryonextend.registry.EntityRegistry.CUSTOM_FALLING_BLOCK.get(), level);
+                EntityRegistry.CUSTOM_FALLING_BLOCK.get(), level);
 
         entity.setPos(x, y, z);
         entity.cachedBlockState = state;
@@ -71,7 +65,7 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
             if (blockStateField != null) {
                 blockStateField.set(entity, state);
             }
-            
+
         } catch (IllegalAccessException e) {
             return null;
         }
@@ -80,7 +74,7 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
         entity.setDeltaMovement(motion);
         entity.time = 1;
         entity.dropItem = true;
-        
+
         level.addFreshEntity(entity);
 
         return entity;
@@ -128,49 +122,96 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                 }
             }
         } catch (IllegalAccessException e) {
-            CarryOnExtend.LOGGER.error("Failed to obtain the blockState of FallingBlockEntity", e);
+            this.discard();
+            return;
         }
         
-        BlockPos currentPos = this.blockPosition();
-        boolean wasOnGround = this.onGround();
-        boolean wasRemoved = this.isRemoved();
-        
-        super.tick();
-        
-        boolean isRemovedNow = this.isRemoved();
-        boolean isOnGroundNow = this.onGround();
-        
-        if (!wasOnGround && isOnGroundNow && blockState != null) {
-            shouldDropItems = true;
+        if (blockState == null) {
+            this.discard();
+            return;
         }
         
-        if (!wasRemoved && isRemovedNow && blockState != null) {
-            Block block = blockState.getBlock();
-            BlockPos finalPos = this.blockPosition();
-            
-
-            if (level().getBlockState(finalPos).is(block)) {
-                if (level().getBlockEntity(finalPos) != null && customData != null && !customData.isEmpty()) {
-                    level().getBlockEntity(finalPos).loadWithComponents(customData, level().registryAccess());
-                    level().sendBlockUpdated(finalPos, level().getBlockState(finalPos), level().getBlockState(finalPos), 3);
-                    level().getBlockEntity(finalPos).setChanged();
-                }
+        if (!this.isNoGravity()) {
+            this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -0.04D, 0.0D));
+        }
+        
+        this.move(MoverType.SELF, this.getDeltaMovement());
+        
+        BlockPos pos = this.blockPosition();
+        
+        if (!this.level().isClientSide) {
+            if (this.isRemoved()) {
+                return;
             }
-            else if (customData != null && !customData.isEmpty() && 
-                    !handledDrops && level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                NonNullList<ItemStack> items = extractItemsFromContainer(customData);
-                if (!items.isEmpty()) {
-                    Containers.dropContents(level(), finalPos, items);
+            
+            boolean canPlace = this.level().getBlockState(pos).canBeReplaced();
+            boolean onGround = this.onGround();
+            
+            if (onGround && canPlace) {
+                if (this.level().setBlock(pos, blockState, 3)) {
+                    if (this.level().getBlockEntity(pos) != null && customData != null && !customData.isEmpty()) {
+                        BlockEntity blockEntity = this.level().getBlockEntity(pos);
+                        blockEntity.loadWithComponents(customData, this.level().registryAccess());
+                        this.level().sendBlockUpdated(pos, blockState, blockState, 3);
+                        blockEntity.setChanged();
+                    }
+                    
+                    this.discard();
+                }
+            } else if (onGround && !handledDrops) {
+                if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                    NonNullList<ItemStack> containerItems = NonNullList.create();
+                    if (customData != null && !customData.isEmpty()) {
+                        containerItems = extractItemsFromContainer(customData);
+
+                        customData = removeItemsData(customData.copy());
+                    }
+                    
+                    ItemStack itemStack = new ItemStack(blockState.getBlock());
+                    
+                    if (customData != null && !customData.isEmpty() && 
+                        blockState.getBlock() instanceof EntityBlock entityBlock) {
+                        
+                            BlockEntity tempEntity = entityBlock.newBlockEntity(pos, blockState);
+                            if (tempEntity != null) {
+                                tempEntity.loadWithComponents(customData, this.level().registryAccess());
+                                
+                                tempEntity.saveToItem(itemStack, this.level().registryAccess());
+                                
+                            }
+                    }
+                    
+                    this.spawnAtLocation(itemStack);
+                    
+                    for (ItemStack item : containerItems) {
+                        if (!item.isEmpty()) {
+                            this.spawnAtLocation(item);
+                        }
+                    }
+                    
                     handledDrops = true;
                 }
+                
+                this.discard();
             }
         }
         
-        if (this.blockData == null && customData != null && !customData.isEmpty()) {
-            this.blockData = customData;
-        }
+        this.setDeltaMovement(this.getDeltaMovement().scale(0.98D));
     }
 
+    private static <T> void addComponentSafely(DataComponentPatch.Builder patchBuilder,
+                                               DataComponentType<?> componentType,
+                                               Object componentValue) {
+        if (componentValue == null) return;
+        
+        @SuppressWarnings("unchecked")
+            DataComponentType<T> typedComponent =
+                (DataComponentType<T>) componentType;
+            @SuppressWarnings("unchecked")
+            T typedValue = (T) componentValue;
+            
+            patchBuilder.set(typedComponent, typedValue);
+    }
 
     private NonNullList<ItemStack> extractItemsFromContainer(CompoundTag data) {
         NonNullList<ItemStack> allItems = NonNullList.create();
@@ -257,5 +298,19 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                 }
             }
         }
+    }
+
+    private CompoundTag removeItemsData(CompoundTag data) {
+        if (data == null) return new CompoundTag();
+        
+        String[] commonItemContainers = {"Items", "Inventory", "item_inventory", "inventory", "Container"};
+        
+        for (String containerTag : commonItemContainers) {
+            if (data.contains(containerTag, 9)) {
+                data.remove(containerTag);
+            }
+        }
+        
+        return data;
     }
 }
