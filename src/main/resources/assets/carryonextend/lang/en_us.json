@@ -1,3 +1,3 @@
 {
-  "message.carryonextend.cannot_throw_container": "Cannot throw container blocks! Please place instead."
+  "message.carryonextend.power_level": "Throw Power: %1$s/%2$s (%3$s%%)"
 }

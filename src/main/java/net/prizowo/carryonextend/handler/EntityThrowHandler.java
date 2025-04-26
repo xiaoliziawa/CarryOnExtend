@@ -17,17 +17,28 @@ import tschipp.carryon.common.scripting.CarryOnScript.ScriptEffects;
 
 public class EntityThrowHandler {
 
-    private static final float THROW_POWER = 0.8f;
-    private static final float THROW_UPWARD = 0.2f;
+    private static final float BASE_THROW_POWER = 0.8f;
+    private static final float BASE_THROW_UPWARD = 0.2f;
+    private static final float MAX_POWER_MULTIPLIER = 2.5f;
 
     public static void throwCarriedEntity(ServerPlayer player) {
+        throwCarriedEntityWithPower(player, 1.0f);
+    }
+    
+    public static void throwCarriedEntityWithPower(ServerPlayer player, float powerFactor) {
         CarryOnData carry = CarryOnDataManager.getCarryData(player);
         
         if (!carry.isCarrying(CarryType.ENTITY) && !carry.isCarrying(CarryType.PLAYER)) {
             return;
         }
         
+
         Level level = player.level();
+        
+        float powerMult = 1.0f + (powerFactor * (MAX_POWER_MULTIPLIER - 1.0f));
+
+        float throwPower = BASE_THROW_POWER * powerMult;
+        float throwUpward = BASE_THROW_UPWARD * powerMult;
         
         if (carry.isCarrying(CarryType.PLAYER)) {
             Entity passenger = player.getFirstPassenger();
@@ -37,9 +48,11 @@ public class EntityThrowHandler {
             
             if (passenger != null) {
                 Vec3 lookDir = player.getLookAngle();
-                passenger.setDeltaMovement(lookDir.x * THROW_POWER, THROW_UPWARD, lookDir.z * THROW_POWER);
+                passenger.setDeltaMovement(lookDir.x * throwPower, throwUpward, lookDir.z * throwPower);
+                
+                float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + powerFactor * 0.8f));
                 level.playSound(null, player.getX(), player.getY(), player.getZ(), 
-                        SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8F, 0.8F);
+                        SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8F, pitch);
             }
             
             player.swing(InteractionHand.MAIN_HAND, true);
@@ -69,18 +82,18 @@ public class EntityThrowHandler {
         level.addFreshEntity(entity);
         
         Vec3 lookDir = player.getLookAngle();
-        entity.setDeltaMovement(lookDir.x * THROW_POWER, THROW_UPWARD, lookDir.z * THROW_POWER);
+        entity.setDeltaMovement(lookDir.x * throwPower, throwUpward, lookDir.z * throwPower);
         
         if (entity instanceof Mob mob) {
             mob.setNoAi(false);
         }
         
+        float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + powerFactor * 0.8f));
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8F, 0.8F);
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8F, pitch);
         
         carry.clear();
         CarryOnDataManager.setCarryData(player, carry);
         player.swing(InteractionHand.MAIN_HAND, true);
-        
     }
 } 
