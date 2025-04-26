@@ -8,6 +8,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.prizowo.carryonextend.network.ThrowBlockPacket;
 import net.prizowo.carryonextend.network.ThrowEntityPacket;
+import net.prizowo.carryonextend.network.ThrowPowerPacket;
 
 @Mod.EventBusSubscriber(modid = CarryOnExtend.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class NetworkHandler {
@@ -38,6 +39,11 @@ public class NetworkHandler {
                     ThrowBlockPacket::encode, 
                     ThrowBlockPacket::decode, 
                     ThrowBlockPacket::handle);
+
+            INSTANCE.registerMessage(nextID(), ThrowPowerPacket.class,
+                    ThrowPowerPacket::encode,
+                    ThrowPowerPacket::decode,
+                    ThrowPowerPacket::handle);
         });
     }
 }
