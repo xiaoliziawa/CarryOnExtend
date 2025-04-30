@@ -40,9 +40,7 @@ public class BlockThrowHandler {
             return;
         }
         
-        // 记录接收到的力量值
-        CarryOnExtend.LOGGER.info("服务器接收到方块投掷请求，力量因子: " + powerFactor);
-        
+
         BlockState blockState = carry.getBlock();
         Vec3 playerPos = player.getEyePosition().add(player.getLookAngle().scale(0.5));
         BlockPos tempPos = new BlockPos((int)playerPos.x, (int)playerPos.y, (int)playerPos.z);
@@ -57,8 +55,7 @@ public class BlockThrowHandler {
         }
         
         float powerMult = 1.0f + (powerFactor * (MAX_POWER_MULTIPLIER - 1.0f));
-        CarryOnExtend.LOGGER.info("计算出的实际力量倍率: " + powerMult);
-        
+
         Vec3 lookDir = player.getLookAngle();
         Vec3 motion = new Vec3(
             lookDir.x * BASE_THROW_POWER * powerMult,
