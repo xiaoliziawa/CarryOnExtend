@@ -72,19 +72,16 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
         BlockEntityType<?> blockEntityType = findBlockEntityType(blockState);
 
         if (blockEntityType == null) {
-            // 如果找不到类型，只渲染模型
             renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
             return;
         }
 
-        // **移除缓存，每次都创建新的实例**
         BlockEntity blockEntity = createBlockEntityInstance(blockState, blockEntityType, renderPos);
         if (blockEntity == null) {
             renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
             return;
         }
 
-        // 设置Level并加载数据
         blockEntity.setLevel(level);
         if (entity.getBlockData() != null && !entity.getBlockData().isEmpty()) {
             try {
@@ -94,8 +91,6 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
             }
         }
         
-        blockEntity.setBlockState(blockState);
-
         if (blockState.getRenderShape() == RenderShape.MODEL) {
              renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
         }
