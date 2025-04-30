@@ -41,6 +41,7 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
     public void render(CustomFallingBlockEntity entity, float entityYaw, float partialTicks,
                       @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int packedLight) {
         this.partialTicks = partialTicks;
+
         BlockState blockState = entity.getBlockState();
 
         if (blockState.getRenderShape() == RenderShape.INVISIBLE) {

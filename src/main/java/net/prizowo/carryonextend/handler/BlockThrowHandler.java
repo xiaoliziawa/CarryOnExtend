@@ -35,10 +35,6 @@ public class BlockThrowHandler {
         }
 
         Level level = player.level();
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
 
         BlockState blockState = carry.getBlock();
         Vec3 playerPos = player.getEyePosition().add(player.getLookAngle().scale(0.5));
