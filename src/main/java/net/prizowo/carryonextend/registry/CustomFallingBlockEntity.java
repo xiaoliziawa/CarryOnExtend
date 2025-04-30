@@ -96,93 +96,116 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
 
     @Override
     public void tick() {
-        CompoundTag blockData = this.getBlockData();
-        
         if (this.blockState == null) {
             this.discard();
             return;
         }
         
+        updateMovement();
+        
+        if (!this.level().isClientSide && !this.isRemoved()) {
+            BlockPos pos = this.blockPosition();
+            boolean canPlace = this.level().getBlockState(pos).canBeReplaced();
+            
+            if (this.onGround()) {
+                if (canPlace) {
+                    placeBlock(pos);
+                } else {
+                    dropAsItem();
+                }
+            }
+        }
+    }
+    
+    private void updateMovement() {
         if (!this.isNoGravity()) {
             this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -0.04D, 0.0D));
         }
         
         this.move(MoverType.SELF, this.getDeltaMovement());
+        this.setDeltaMovement(this.getDeltaMovement().scale(0.98D));
+    }
+    
+    private void placeBlock(BlockPos pos) {
+        CompoundTag blockData = this.getBlockData();
+        
+        if (this.level().setBlock(pos, this.blockState, 3)) {
+            if (hasValidBlockEntity(pos, blockData)) {
+                BlockEntity blockEntity = this.level().getBlockEntity(pos);
+                if (blockEntity != null) {
+                    blockEntity.load(blockData);
+                    this.level().sendBlockUpdated(pos, this.blockState, this.blockState, 3);
+                    blockEntity.setChanged();
+                }
+            }
+            this.discard();
+        }
+    }
+    
+    private boolean hasValidBlockEntity(BlockPos pos, CompoundTag blockData) {
+        return this.level().getBlockEntity(pos) != null && blockData != null && !blockData.isEmpty();
+    }
+    
+    private void dropAsItem() {
+        if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+            ItemStack itemStack = createItemStackWithData();
+            this.spawnAtLocation(itemStack);
+        }
+        
+        this.discard();
+    }
+    
+    private ItemStack createItemStackWithData() {
+        ItemStack itemStack = new ItemStack(this.blockState.getBlock());
+        CompoundTag blockData = this.getBlockData();
+        
+        if (blockData == null || blockData.isEmpty() || 
+            !(this.blockState.getBlock() instanceof EntityBlock entityBlock)) {
+            return itemStack;
+        }
         
         BlockPos pos = this.blockPosition();
+        BlockEntity tempEntity = entityBlock.newBlockEntity(pos, this.blockState);
         
-        if (!this.level().isClientSide) {
-            if (this.isRemoved()) {
-                return;
-            }
-            
-            boolean canPlace = this.level().getBlockState(pos).canBeReplaced();
-            boolean onGround = this.onGround();
-            
-            if (onGround && canPlace) {
-                if (this.level().setBlock(pos, this.blockState, 3)) {
-                    if (this.level().getBlockEntity(pos) != null && blockData != null && !blockData.isEmpty()) {
-                        BlockEntity blockEntity = this.level().getBlockEntity(pos);
-                        if (blockEntity != null) {
-                            blockEntity.load(blockData);
-                            this.level().sendBlockUpdated(pos, this.blockState, this.blockState, 3);
-                            blockEntity.setChanged();
-                        }
-                    }
-                    this.discard();
-                }
-            } else if (onGround) {
-                if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                    ItemStack itemStack = new ItemStack(this.blockState.getBlock());
-                    
-                    if (blockData != null && !blockData.isEmpty() &&
-                        this.blockState.getBlock() instanceof EntityBlock entityBlock) {
-                        
-                        BlockEntity tempEntity = entityBlock.newBlockEntity(pos, this.blockState);
-                        if (tempEntity != null) {
-                            tempEntity.load(blockData);
-                            
-                            CompoundTag fullEntityTag = tempEntity.saveWithFullMetadata();
-                            CompoundTag itemTag = new CompoundTag();
-                            
-                            if (fullEntityTag.contains("ForgeCaps")) {
-                                itemTag.put("ForgeCaps", fullEntityTag.getCompound("ForgeCaps"));
-                            }
-                            
-                            CompoundTag blockEntityTag = new CompoundTag();
-                            
-                            for (String key : fullEntityTag.getAllKeys()) {
-                                if (!key.equals("x") && !key.equals("y") && !key.equals("z")) {
-                                    blockEntityTag.put(key, fullEntityTag.get(key));
-                                }
-                            }
-                            
-                            boolean isMekanismBlock = fullEntityTag.getString("id").startsWith("mekanism:");
-                            if (isMekanismBlock && fullEntityTag.contains("EnergyContainers")) {
-                                CompoundTag mekData = new CompoundTag();
-                                
-                                mekData.put("EnergyContainers", fullEntityTag.get("EnergyContainers"));
-                                
-                                if (fullEntityTag.contains("componentConfig")) {
-                                    mekData.put("componentConfig", fullEntityTag.get("componentConfig"));
-                                }
-                                
-                                itemTag.put("mekData", mekData);
-                            }
-                            
-                            itemTag.put("BlockEntityTag", blockEntityTag);
-                            itemStack.setTag(itemTag);
-                        }
-                    }
-                    
-                    this.spawnAtLocation(itemStack);
-                }
-                
-                this.discard();
+        if (tempEntity != null) {
+            return createItemWithBlockEntityData(itemStack, tempEntity, blockData);
+        }
+        
+        return itemStack;
+    }
+    
+    private ItemStack createItemWithBlockEntityData(ItemStack itemStack, BlockEntity tempEntity, CompoundTag blockData) {
+        tempEntity.load(blockData);
+        CompoundTag fullEntityTag = tempEntity.saveWithFullMetadata();
+        CompoundTag itemTag = createItemTag(fullEntityTag);
+        
+        itemStack.setTag(itemTag);
+        return itemStack;
+    }
+    
+    private CompoundTag createItemTag(CompoundTag fullEntityTag) {
+        CompoundTag itemTag = new CompoundTag();
+        
+        if (fullEntityTag.contains("ForgeCaps")) {
+            itemTag.put("ForgeCaps", fullEntityTag.getCompound("ForgeCaps"));
+        }
+        
+        CompoundTag blockEntityTag = createBlockEntityTag(fullEntityTag);
+        itemTag.put("BlockEntityTag", blockEntityTag);
+        
+        return itemTag;
+    }
+    
+    private CompoundTag createBlockEntityTag(CompoundTag fullEntityTag) {
+        CompoundTag blockEntityTag = new CompoundTag();
+        
+        for (String key : fullEntityTag.getAllKeys()) {
+            if (!key.equals("x") && !key.equals("y") && !key.equals("z")) {
+                blockEntityTag.put(key, fullEntityTag.get(key));
             }
         }
         
-        this.setDeltaMovement(this.getDeltaMovement().scale(0.98D));
+        return blockEntityTag;
     }
     
     @Override
