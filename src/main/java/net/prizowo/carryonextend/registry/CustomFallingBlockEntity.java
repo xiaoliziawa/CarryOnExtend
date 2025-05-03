@@ -11,67 +11,31 @@ import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.prizowo.carryonextend.CarryOnExtend;
+import net.prizowo.carryonextend.util.FallingBlockEntityUtil;
 import org.jetbrains.annotations.NotNull;
-
-import java.lang.reflect.Field;
 
 public class CustomFallingBlockEntity extends FallingBlockEntity {
     private static final EntityDataAccessor<CompoundTag> BLOCK_DATA = SynchedEntityData.defineId(CustomFallingBlockEntity.class, EntityDataSerializers.COMPOUND_TAG);
-    private static Field blockStateField;
-    private static Field cancelDropField;
-    private static Field timeField;
     private boolean shouldDropItems = false;
     private boolean handledDrops = false;
     private BlockState cachedBlockState = null;
-
-    static {
-        try {
-            blockStateField = FallingBlockEntity.class.getDeclaredField("blockState");
-            blockStateField.setAccessible(true);
-
-                cancelDropField = FallingBlockEntity.class.getDeclaredField("cancelDrop");
-                cancelDropField.setAccessible(true);
-
-                timeField = FallingBlockEntity.class.getDeclaredField("time");
-                timeField.setAccessible(true);
-        } catch (NoSuchFieldException e) {
-            CarryOnExtend.LOGGER.error("Unable to retrieve the blockState field of FallingBlockEntity", e);
-        }
-    }
 
     public CustomFallingBlockEntity(EntityType<CustomFallingBlockEntity> type, Level level) {
         super(type, level);
     }
 
     public static CustomFallingBlockEntity throwBlock(Level level, double x, double y, double z, BlockState state, CompoundTag blockData, Vec3 motion) {
-        CustomFallingBlockEntity entity = new CustomFallingBlockEntity(
-                EntityRegistry.CUSTOM_FALLING_BLOCK.get(), level);
+        return FallingBlockEntityUtil.throwBlock(level, x, y, z, state, blockData, motion);
+    }
 
-        entity.setPos(x, y, z);
-        entity.cachedBlockState = state;
+    public void setCachedBlockState(BlockState state) {
+        this.cachedBlockState = state;
+    }
 
-        try {
-            if (blockStateField != null) {
-                blockStateField.set(entity, state);
-            }
-
-        } catch (IllegalAccessException e) {
-            return null;
-        }
-
-        entity.setBlockData(blockData);
-        entity.setDeltaMovement(motion);
-        entity.time = 1;
-        entity.dropItem = true;
-
-        level.addFreshEntity(entity);
-
-        return entity;
+    public void setDropItem(boolean dropItem) {
+        this.dropItem = dropItem;
     }
 
     @Override
@@ -106,18 +70,10 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
     public void tick() {
         CompoundTag customData = this.getBlockData();
         
-        BlockState blockState = null;
-        try {
-            if (blockStateField != null) {
-                blockState = (BlockState) blockStateField.get(this);
-                if (blockState == null && cachedBlockState != null) {
-                    blockState = cachedBlockState;
-                    blockStateField.set(this, cachedBlockState);
-                }
-            }
-        } catch (IllegalAccessException e) {
-            this.discard();
-            return;
+        BlockState blockState = FallingBlockEntityUtil.getBlockState(this);
+        if (blockState == null && cachedBlockState != null) {
+            blockState = cachedBlockState;
+            FallingBlockEntityUtil.setBlockState(this, cachedBlockState);
         }
         
         if (blockState == null) {
@@ -142,33 +98,13 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
             boolean onGround = this.onGround();
             
             if (onGround && canPlace) {
-                if (this.level().setBlock(pos, blockState, 3)) {
-                    if (this.level().getBlockEntity(pos) != null && customData != null && !customData.isEmpty()) {
-                        BlockEntity blockEntity = this.level().getBlockEntity(pos);
-                        if (blockEntity != null && blockEntity.getLevel() == null) {
-                            blockEntity.setLevel(this.level());
-                        }
-                        blockEntity.loadWithComponents(customData, this.level().registryAccess());
-                        this.level().sendBlockUpdated(pos, blockState, blockState, 3);
-                        blockEntity.setChanged();
-                    }
-                    
-                    this.discard();
+                if (FallingBlockEntityUtil.placeBlock(this, pos, blockState, customData, this.level())) {
+                    return;
                 }
             } else if (onGround && !handledDrops) {
                 if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-                    ItemStack itemStack = new ItemStack(blockState.getBlock());
-                    
-                    if (customData != null && !customData.isEmpty() && 
-                        blockState.getBlock() instanceof EntityBlock entityBlock) {
-                        
-                        BlockEntity tempEntity = entityBlock.newBlockEntity(pos, blockState);
-                        if (tempEntity != null) {
-                            tempEntity.setLevel(this.level());
-                            tempEntity.loadWithComponents(customData, this.level().registryAccess());
-                            tempEntity.saveToItem(itemStack, this.level().registryAccess());
-                        }
-                    }
+                    ItemStack itemStack = FallingBlockEntityUtil.createItemWithBlockEntityData(
+                            blockState, customData, pos, this.level());
                     
                     this.spawnAtLocation(itemStack);
                     handledDrops = true;

@@ -11,8 +11,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.BlockPos;
-import net.prizowo.carryonextend.CarryOnExtend;
 import net.prizowo.carryonextend.registry.CustomFallingBlockEntity;
+import net.prizowo.carryonextend.util.FallingBlockEntityUtil;
 import tschipp.carryon.common.carry.CarryOnData;
 import tschipp.carryon.common.carry.CarryOnData.CarryType;
 import tschipp.carryon.common.carry.CarryOnDataManager;
@@ -65,7 +65,7 @@ public class BlockThrowHandler {
         
         CompoundTag blockData = blockEntity != null ? blockEntity.saveWithFullMetadata(level.registryAccess()) : new CompoundTag();
         
-        CustomFallingBlockEntity.throwBlock(
+        FallingBlockEntityUtil.throwBlock(
             level,
             playerPos.x,
             playerPos.y,
