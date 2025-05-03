@@ -6,6 +6,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
+import net.prizowo.carryonextend.network.PlayerThrowPacket;
 import net.prizowo.carryonextend.network.ThrowBlockPacket;
 import net.prizowo.carryonextend.network.ThrowEntityPacket;
 import net.prizowo.carryonextend.network.ThrowPowerPacket;
@@ -44,6 +45,11 @@ public class NetworkHandler {
                     ThrowPowerPacket::encode,
                     ThrowPowerPacket::decode,
                     ThrowPowerPacket::handle);
+            
+            INSTANCE.registerMessage(nextID(), PlayerThrowPacket.class,
+                    PlayerThrowPacket::encode,
+                    PlayerThrowPacket::decode,
+                    PlayerThrowPacket::handle);
         });
     }
 }
