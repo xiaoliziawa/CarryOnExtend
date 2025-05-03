@@ -1,6 +1,7 @@
 package net.prizowo.carryonextend.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -53,6 +54,18 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
 
         poseStack.pushPose();
         try {
+            poseStack.translate(0.0D, 0.0D, 0.0D);
+            
+            float rotationSpeed = 5.0F;
+            float ticksExisted = entity.tickCount + partialTicks;
+            float rotationX = ticksExisted * rotationSpeed % 360;
+            float rotationY = (ticksExisted * rotationSpeed * 0.8F) % 360;
+            float rotationZ = (ticksExisted * rotationSpeed * 0.6F) % 360;
+            
+            poseStack.mulPose(Axis.XP.rotationDegrees(rotationX));
+            poseStack.mulPose(Axis.YP.rotationDegrees(rotationY));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(rotationZ));
+            
             poseStack.translate(-0.5D, 0.0D, -0.5D);
 
             if (blockState.hasBlockEntity()) {
