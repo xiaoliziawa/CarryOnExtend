@@ -1,7 +1,6 @@
 package net.prizowo.carryonextend.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -10,12 +9,12 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -54,18 +53,6 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
 
         poseStack.pushPose();
         try {
-            poseStack.translate(0.0D, 0.0D, 0.0D);
-            
-            float rotationSpeed = 5.0F;
-            float ticksExisted = entity.tickCount + partialTicks;
-            float rotationX = ticksExisted * rotationSpeed % 360;
-            float rotationY = (ticksExisted * rotationSpeed * 0.8F) % 360;
-            float rotationZ = (ticksExisted * rotationSpeed * 0.6F) % 360;
-            
-            poseStack.mulPose(Axis.XP.rotationDegrees(rotationX));
-            poseStack.mulPose(Axis.YP.rotationDegrees(rotationY));
-            poseStack.mulPose(Axis.ZP.rotationDegrees(rotationZ));
-            
             poseStack.translate(-0.5D, 0.0D, -0.5D);
 
             if (blockState.hasBlockEntity()) {
@@ -189,6 +176,6 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
 
     @Override
     public @NotNull ResourceLocation getTextureLocation(@NotNull CustomFallingBlockEntity entity) {
-        return TextureAtlas.LOCATION_BLOCKS;
+        return InventoryMenu.BLOCK_ATLAS;
     }
 }
