@@ -22,18 +22,13 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.client.RenderTypeHelper;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.prizowo.carryonextend.registry.CustomFallingBlockEntity;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 @OnlyIn(Dist.CLIENT)
 public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBlockEntity> {
     private final BlockRenderDispatcher dispatcher;
-    private static final Map<BlockState, BlockEntity> DUMMY_BLOCK_ENTITY_CACHE = new ConcurrentHashMap<>();
     private float partialTicks;
 
     public CustomFallingBlockRenderer(EntityRendererProvider.Context context) {
@@ -44,33 +39,27 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
 
     @Override
     public void render(CustomFallingBlockEntity entity, float entityYaw, float partialTicks,
-                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+                      @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int packedLight) {
         this.partialTicks = partialTicks;
+
         BlockState blockState = entity.getBlockState();
-        if (blockState == null || blockState.getRenderShape() == RenderShape.INVISIBLE) {
+
+        if (blockState.getRenderShape() == RenderShape.INVISIBLE) {
             return;
         }
 
         Level level = entity.level();
+        BlockPos renderPos = BlockPos.containing(entity.getX(), entity.getY(), entity.getZ());
 
         poseStack.pushPose();
         try {
-            BlockPos blockPos = BlockPos.containing(entity.getX(), entity.getBoundingBox().maxY, entity.getZ());
-            poseStack.translate(-0.5, 0.0, -0.5);
-
-            BakedModel model = this.dispatcher.getBlockModel(blockState);
-
-            RandomSource randomSource = RandomSource.create(blockState.getSeed(entity.getStartPos()));
-
-            ModelData modelData = ModelData.EMPTY;
+            poseStack.translate(-0.5D, 0.0D, -0.5D);
 
             if (blockState.hasBlockEntity()) {
-                renderWithBlockEntity(entity, blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData);
+                renderBlockWithEntity(entity, blockState, level, renderPos, poseStack, buffer, packedLight);
+            } else {
+                renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, false);
             }
-            else if (blockState.getRenderShape() == RenderShape.MODEL) {
-                renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-            }
-        } catch (Exception e) {
         } finally {
             poseStack.popPose();
         }
@@ -78,104 +67,111 @@ public class CustomFallingBlockRenderer extends EntityRenderer<CustomFallingBloc
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }
 
-    private void renderModel(BlockState blockState, Level level, BlockPos blockPos,
-                             PoseStack poseStack, MultiBufferSource buffer, int packedLight,
-                             RandomSource randomSource, ModelData modelData, BakedModel model) {
-        for (RenderType renderType : model.getRenderTypes(blockState, randomSource, modelData)) {
-            this.dispatcher.getModelRenderer().tesselateBlock(
-                    level,
-                    model,
-                    blockState,
-                    blockPos,
-                    poseStack,
-                    buffer.getBuffer(RenderTypeHelper.getMovingBlockRenderType(renderType)),
-                    false,
-                    randomSource,
-                    blockState.getSeed(blockPos),
-                    OverlayTexture.NO_OVERLAY,
-                    modelData,
-                    renderType
-            );
-        }
-    }
+    private void renderBlockWithEntity(CustomFallingBlockEntity entity, BlockState blockState,
+                                     Level level, BlockPos renderPos, PoseStack poseStack,
+                                     MultiBufferSource buffer, int packedLight) {
+        BlockEntityType<?> blockEntityType = findBlockEntityType(blockState);
 
-    private void renderWithBlockEntity(CustomFallingBlockEntity entity, BlockState blockState,
-                                       Level level, BlockPos blockPos, PoseStack poseStack,
-                                       MultiBufferSource buffer, int packedLight,
-                                       RandomSource randomSource, ModelData modelData) {
-        BlockEntityType<?> blockEntityType = null;
-        try {
-            for (BlockEntityType<?> type : BuiltInRegistries.BLOCK_ENTITY_TYPE) {
-                if (type.isValid(blockState)) {
-                    blockEntityType = type;
-                    break;
-                }
-            }
-        } catch (Exception e) {
+        if (blockEntityType == null) {
+            renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
+            return;
         }
 
-        if (blockEntityType != null) {
-            BlockEntity blockEntity = getDummyBlockEntity(blockState, blockEntityType, blockPos);
-
-            if (blockEntity != null) {
-                blockEntity.setLevel(level);
-                
-                if (entity.getBlockData() != null && !entity.getBlockData().isEmpty()) {
-                    try {
-                        blockEntity.loadWithComponents(entity.getBlockData(), level.registryAccess());
-                    } catch (Exception e) {
-                    }
-                }
-
-                BlockEntityRenderer<BlockEntity> blockEntityRenderer = getBlockEntityRenderer(blockEntity);
-
-                if (blockEntityRenderer != null) {
-                    poseStack.pushPose();
-                    try {
-                        poseStack.translate(0.5, 0.5, 0.5);
-                        blockEntityRenderer.render(blockEntity, partialTicks(), poseStack, buffer, packedLight, OverlayTexture.NO_OVERLAY);
-                    } catch (Exception e) {
-                    } finally {
-                        poseStack.popPose();
-                    }
-
-                    BakedModel model = this.dispatcher.getBlockModel(blockState);
-                    renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-                } else {
-                    BakedModel model = this.dispatcher.getBlockModel(blockState);
-                    renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-                }
-            } else {
-                BakedModel model = this.dispatcher.getBlockModel(blockState);
-                renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
-            }
-        } else {
-            BakedModel model = this.dispatcher.getBlockModel(blockState);
-            renderModel(blockState, level, blockPos, poseStack, buffer, packedLight, randomSource, modelData, model);
+        BlockEntity blockEntity = createBlockEntityInstance(blockState, blockEntityType, renderPos);
+        if (blockEntity == null) {
+            renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
+            return;
         }
-    }
 
-    private BlockEntity getDummyBlockEntity(BlockState blockState, BlockEntityType<?> blockEntityType, BlockPos pos) {
-        return DUMMY_BLOCK_ENTITY_CACHE.computeIfAbsent(blockState, state -> {
+        blockEntity.setLevel(level);
+        if (entity.getBlockData() != null && !entity.getBlockData().isEmpty()) {
             try {
-                return blockEntityType.create(pos, blockState);
+                blockEntity.loadWithComponents(entity.getBlockData(), level.registryAccess());
             } catch (Exception e) {
-                return null;
+                e.printStackTrace();
             }
-        });
+        }
+        
+        if (blockState.getRenderShape() == RenderShape.MODEL) {
+             renderBlockModel(blockState, level, renderPos, poseStack, buffer, packedLight, true);
+        }
+
+        BlockEntityRenderer<BlockEntity> renderer = getBlockEntityRenderer(blockEntity);
+        if (renderer != null) {
+            poseStack.pushPose();
+            try {
+                poseStack.translate(0.5D, 0.5D, 0.5D);
+                
+                renderer.render(blockEntity, partialTicks, poseStack, buffer, packedLight, OverlayTexture.NO_OVERLAY);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                poseStack.popPose();
+            }
+        }
+    }
+    
+    private BlockEntityType<?> findBlockEntityType(BlockState blockState) {
+        for (BlockEntityType<?> type : BuiltInRegistries.BLOCK_ENTITY_TYPE) {
+            try {
+                if (type.isValid(blockState)) {
+                    return type;
+                }
+            } catch (Exception ignored) {
+
+            }
+        }
+        return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private <T extends BlockEntity> BlockEntityRenderer<T> getBlockEntityRenderer(T blockEntity) {
+    private BlockEntity createBlockEntityInstance(BlockState blockState, BlockEntityType<?> blockEntityType, BlockPos pos) {
         try {
-            return Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+            return blockEntityType.create(pos, blockState);
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
 
-    private float partialTicks() {
-        return this.partialTicks;
+    private void renderBlockModel(BlockState blockState, Level level, BlockPos renderPos,
+                                PoseStack poseStack, MultiBufferSource buffer, int packedLight,
+                                boolean useTranslucentMovingBlock) {
+        BakedModel model = this.dispatcher.getBlockModel(blockState);
+        RandomSource randomSource = RandomSource.create();
+        ModelData modelData = ModelData.EMPTY;
+        BlockEntity be = level.getBlockEntity(renderPos);
+        if (be != null) {
+             modelData = be.getModelData();
+        }
+
+        for (RenderType renderType : model.getRenderTypes(blockState, randomSource, modelData)) {
+            RenderType actualRenderType = useTranslucentMovingBlock ?
+                RenderType.translucentMovingBlock() : renderType;
+
+            this.dispatcher.getModelRenderer().tesselateBlock(
+                level,
+                model,
+                blockState,
+                renderPos,
+                poseStack,
+                buffer.getBuffer(actualRenderType),
+                false,
+                randomSource,
+                blockState.getSeed(renderPos),
+                OverlayTexture.NO_OVERLAY,
+                modelData,
+                actualRenderType
+            );
+        }
+    }
+
+    private <T extends BlockEntity> BlockEntityRenderer<T> getBlockEntityRenderer(T blockEntity) {
+        try {
+            return Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override

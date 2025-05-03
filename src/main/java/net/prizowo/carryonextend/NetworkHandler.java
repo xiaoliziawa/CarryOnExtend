@@ -4,6 +4,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.prizowo.carryonextend.network.PlayerThrowPacket;
 import net.prizowo.carryonextend.network.ThrowBlockPacket;
 import net.prizowo.carryonextend.network.ThrowEntityPacket;
 import net.prizowo.carryonextend.network.ThrowPowerPacket;
@@ -30,6 +31,12 @@ public class NetworkHandler {
                 ThrowPowerPacket.TYPE,
                 ThrowPowerPacket.STREAM_CODEC,
                 ThrowPowerPacket::handle
+        );
+        
+        registrar.playToClient(
+                PlayerThrowPacket.TYPE,
+                PlayerThrowPacket.STREAM_CODEC,
+                PlayerThrowPacket::handle
         );
     }
 }
