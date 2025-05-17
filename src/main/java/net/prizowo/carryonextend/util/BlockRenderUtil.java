@@ -78,7 +78,6 @@ public class BlockRenderUtil {
                     return type;
                 }
             } catch (Exception ignored) {
-                // 忽略验证过程中可能出现的异常
             }
         }
         return null;
