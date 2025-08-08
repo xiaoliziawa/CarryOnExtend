@@ -8,10 +8,13 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.prizowo.carryonextend.CarryOnExtend;
 import net.prizowo.carryonextend.network.PlayerThrowPacket;
+import net.prizowo.carryonextend.trigger.TriggerRegistry;
 import tschipp.carryon.Constants;
 import tschipp.carryon.common.carry.CarryOnData;
 import tschipp.carryon.common.carry.CarryOnData.CarryType;
@@ -120,6 +123,12 @@ public class EntityThrowHandler {
         }
         
         Entity entity = carry.getEntity(level);
+        
+        if (entity instanceof PrimedTnt primedTnt) {
+            TriggerRegistry.TNT_THROW.get().trigger(player);
+            primedTnt.addTag("thrownBy:" + player.getUUID().toString());
+        }
+        
         Vec3 playerPos = player.position().add(0, 1.0, 0);
         entity.setPos(playerPos);
 
