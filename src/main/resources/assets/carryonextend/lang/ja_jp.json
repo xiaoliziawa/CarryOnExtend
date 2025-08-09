@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "投擲パワー: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "TNT投擲マスター",
+  "advancement.carryonextend.tnt_thrower.description": "着火したTNTエンティティを投げる",
+  
+  "advancement.carryonextend.self_destruction.title": "自己破壊",
+  "advancement.carryonextend.self_destruction.description": "自分が投げたTNTで死ぬ"
+}

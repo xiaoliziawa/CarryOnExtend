@@ -9,10 +9,12 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.prizowo.carryonextend.NetworkHandler;
 import net.prizowo.carryonextend.network.PlayerThrowPacket;
+import net.prizowo.carryonextend.trigger.TriggerRegistry;
 import net.prizowo.carryonextend.util.FallingBlockUtil;
 import tschipp.carryon.Constants;
 import tschipp.carryon.common.carry.CarryOnData;
@@ -191,6 +193,14 @@ public class EntityThrowHandler {
 
         if (entity instanceof Mob mob) {
             mob.setNoAi(false);
+        }
+
+        // 检查是否投掷了点燃的TNT实体
+        if (entity instanceof PrimedTnt primedTnt) {
+            // 为TNT添加投掷者标签，用于自我毁灭成就检测
+            primedTnt.addTag("thrownBy:" + player.getUUID().toString());
+            // 触发TNT投掷成就
+            TriggerRegistry.TNT_THROW.trigger(player);
         }
 
         float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + powerFactor * 0.8f));

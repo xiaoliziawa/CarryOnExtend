@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "Siła rzutu: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "Mistrz rzucania TNT",
+  "advancement.carryonextend.tnt_thrower.description": "Rzuć podpalonym TNT",
+  
+  "advancement.carryonextend.self_destruction.title": "Samozniszczenie",
+  "advancement.carryonextend.self_destruction.description": "Zostań zabity przez własne rzucone TNT"
+}

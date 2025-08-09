@@ -1,3 +1,9 @@
 {
-  "message.carryonextend.power_level": "Throw Power: %1$s/%2$s (%3$s%%)"
+  "message.carryonextend.power_level": "Throw Power: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "TNT Thrower Master",
+  "advancement.carryonextend.tnt_thrower.description": "Throw a primed TNT entity",
+  
+  "advancement.carryonextend.self_destruction.title": "Self-Destruction",
+  "advancement.carryonextend.self_destruction.description": "Get killed by your own thrown TNT"
 }

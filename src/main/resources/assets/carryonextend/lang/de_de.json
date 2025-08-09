@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "Wurfkraft: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "TNT-Wurfmeister",
+  "advancement.carryonextend.tnt_thrower.description": "Wirf ein gezündetes TNT-Objekt",
+  
+  "advancement.carryonextend.self_destruction.title": "Selbstzerstörung",
+  "advancement.carryonextend.self_destruction.description": "Werde von deinem eigenen geworfenen TNT getötet"
+}

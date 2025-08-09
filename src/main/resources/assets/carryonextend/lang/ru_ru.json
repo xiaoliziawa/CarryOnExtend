@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "Сила броска: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "Мастер метания TNT",
+  "advancement.carryonextend.tnt_thrower.description": "Бросьте подожжённую TNT",
+  
+  "advancement.carryonextend.self_destruction.title": "Самоуничтожение",
+  "advancement.carryonextend.self_destruction.description": "Погибните от собственной брошенной TNT"
+}

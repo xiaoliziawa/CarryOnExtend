@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "Força do Arremesso: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "Mestre Arremessador de TNT",
+  "advancement.carryonextend.tnt_thrower.description": "Arremesse uma entidade TNT acesa",
+  
+  "advancement.carryonextend.self_destruction.title": "Autodestruição",
+  "advancement.carryonextend.self_destruction.description": "Morra pelo seu próprio TNT arremessado"
+}

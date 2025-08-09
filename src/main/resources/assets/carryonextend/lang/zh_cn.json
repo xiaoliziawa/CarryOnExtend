@@ -1,3 +1,9 @@
 {
-    "message.carryonextend.power_level": "投掷力量: %1$s/%2$s (%3$s%%)"
+    "message.carryonextend.power_level": "投掷力量: %1$s/%2$s (%3$s%%)",
+    
+    "advancement.carryonextend.tnt_thrower.title": "玉面手雷王",
+    "advancement.carryonextend.tnt_thrower.description": "投掷一个点燃的TNT实体",
+    
+    "advancement.carryonextend.self_destruction.title": "自我毁灭",
+    "advancement.carryonextend.self_destruction.description": "被自己投掷出去的TNT炸死"
 }

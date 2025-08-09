@@ -1,0 +1,9 @@
+{
+  "message.carryonextend.power_level": "Force de lancer: %1$s/%2$s (%3$s%%)",
+  
+  "advancement.carryonextend.tnt_thrower.title": "Maître Lanceur de TNT",
+  "advancement.carryonextend.tnt_thrower.description": "Lancez une entité TNT amorcée",
+  
+  "advancement.carryonextend.self_destruction.title": "Auto-destruction",
+  "advancement.carryonextend.self_destruction.description": "Soyez tué par votre propre TNT lancé"
+}

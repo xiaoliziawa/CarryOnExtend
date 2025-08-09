@@ -24,7 +24,7 @@ public class ClientEvents {
 
         if (player == null) return;
 
-        if (event.getKey() == InputConstants.KEY_Q && event.getAction() == InputConstants.PRESS) {
+        if (event.getKey() == mc.options.keyDrop.getKey().getValue() && event.getAction() == InputConstants.PRESS) {
             CarryOnData carry = CarryOnDataManager.getCarryData(player);
 
             if (carry.isCarrying(CarryOnData.CarryType.ENTITY) || carry.isCarrying(CarryOnData.CarryType.PLAYER) ||

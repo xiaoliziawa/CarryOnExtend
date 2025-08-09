@@ -69,6 +69,7 @@ public class BlockThrowHandler {
                 motion
         );
 
+
         float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + powerFactor * 0.8f));
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8F, pitch);
