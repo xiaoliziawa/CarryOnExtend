@@ -18,8 +18,8 @@ import tschipp.carryon.common.scripting.CarryOnScript.ScriptEffects;
 
 public class BlockThrowHandler {
 
-    private static final float BASE_THROW_POWER = 0.8f;
-    private static final float BASE_THROW_UPWARD = 0.3f;
+    private static final float BASE_THROW_POWER = 0.2f;
+    private static final float BASE_THROW_UPWARD = 0.15f;
     private static final float MAX_POWER_MULTIPLIER = 2.5f;
 
     public static void throwCarriedBlock(ServerPlayer player) {

@@ -22,5 +22,9 @@ public class ModDataGenerator {
         generator.addProvider(event.includeServer(), 
             new ModAdvancementProvider(packOutput, lookupProvider, event.getExistingFileHelper())
         );
+
+        generator.addProvider(event.includeServer(),
+            new ModBlockTagsProvider(packOutput, lookupProvider, event.getExistingFileHelper())
+        );
     }
 }
