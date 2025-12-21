@@ -7,6 +7,8 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.item.FallingBlockEntity;
@@ -244,23 +246,41 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
                 return;
             }
         }
-        
+
         updateMovement();
-        
+
         if (!this.level().isClientSide && !this.isRemoved()) {
             BlockPos pos = this.blockPosition();
             boolean canPlace = this.level().getBlockState(pos).canBeReplaced();
-            
+
+            boolean isFragile = this.blockState.is(TagRegistry.Blocks.ALWAYS_DROP);
+
             if (this.onGround()) {
-                if (canPlace) {
+                if (canPlace && !isFragile) {
                     placeBlock(pos);
                 } else {
                     dropAsItem();
                 }
+            } else if (this.horizontalCollision || this.verticalCollision) {
+                dropAsItem();
             }
         }
     }
-    
+
+    private boolean detectCollision(Vec3 positionBefore, Vec3 motionBefore) {
+        Vec3 motionAfter = this.getDeltaMovement();
+
+        boolean horizontalCollision = this.horizontalCollision;
+
+        boolean verticalCollision = this.verticalCollision && motionBefore.y > 0;
+
+        double speedBefore = Math.sqrt(motionBefore.x * motionBefore.x + motionBefore.z * motionBefore.z);
+        double speedAfter = Math.sqrt(motionAfter.x * motionAfter.x + motionAfter.z * motionAfter.z);
+        boolean suddenStop = speedBefore > 0.3 && speedAfter < speedBefore * 0.5;
+
+        return horizontalCollision || verticalCollision || suddenStop;
+    }
+
     private void updateMovement() {
         if (!this.isNoGravity()) {
             this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -0.04D, 0.0D));
@@ -274,6 +294,9 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
         CompoundTag blockData = this.getBlockData();
         
         if (FallingBlockUtil.placeBlock(this.level(), pos, this.blockState, blockData)) {
+            float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + 1.0f * 0.8f));
+            this.level().playSound(null, getX(), getY(), getZ(),
+                    blockState.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 0.8F, pitch);
             this.discard();
         }
     }
@@ -285,6 +308,10 @@ public class CustomFallingBlockEntity extends FallingBlockEntity {
     private void dropAsItem() {
         if (this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
             ItemStack itemStack = createItemStackWithData();
+            float pitch = Math.max(0.5f, Math.min(1.8f, 0.8f + 1.0f * 0.8f));
+            this.level().playSound(null, getX(), getY(), getZ(),
+                    blockState.getSoundType().getBreakSound(), SoundSource.BLOCKS, 0.8F, pitch);
+            this.level().levelEvent(2001, this.blockPosition(), Block.getId(this.blockState));
             this.spawnAtLocation(itemStack);
         }
         
