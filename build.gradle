@@ -99,6 +99,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "curse.maven:carry-on-274259:8512888"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

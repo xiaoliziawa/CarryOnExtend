@@ -22,21 +22,35 @@ public class ClientEvents {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         
-        if (player == null) return;
+        if (player == null || mc.isPaused()) return;
         
-        if (event.getKey() == mc.options.keyDrop.getKey().getValue() && event.getAction() == InputConstants.PRESS) {
-            CarryOnData carry = CarryOnDataManager.getCarryData(player);
-            
-            if (carry.isCarrying(CarryOnData.CarryType.ENTITY) || carry.isCarrying(CarryOnData.CarryType.PLAYER) ||
+        if (event.getKey() == mc.options.keyDrop.getKey().getValue() && event.getAction() == InputConstants.PRESS)
+            carryThrow(player);
+    }
+
+    @SubscribeEvent
+    public static void onMouseInput(InputEvent.MouseButton.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        Player player = mc.player;
+
+        if (player == null || mc.isPaused()) return;
+
+        if (event.getButton() == mc.options.keyDrop.getKey().getValue() && event.getAction() == InputConstants.PRESS)
+            carryThrow(player);
+    }
+
+    public static void carryThrow(Player player){
+        CarryOnData carry = CarryOnDataManager.getCarryData(player);
+
+        if (carry.isCarrying(CarryOnData.CarryType.ENTITY) || carry.isCarrying(CarryOnData.CarryType.PLAYER) ||
                 carry.isCarrying(CarryOnData.CarryType.BLOCK)) {
-                
-                boolean isEntity = carry.isCarrying(CarryOnData.CarryType.ENTITY) || carry.isCarrying(CarryOnData.CarryType.PLAYER);
-                
-                float power = PowerThrowHandler.getPowerFactor();
-                
-                PacketDistributor.sendToServer(new ThrowPowerPacket(power, isEntity));
-                
-            }
+
+            boolean isEntity = carry.isCarrying(CarryOnData.CarryType.ENTITY) || carry.isCarrying(CarryOnData.CarryType.PLAYER);
+
+            float power = PowerThrowHandler.getPowerFactor();
+
+            PacketDistributor.sendToServer(new ThrowPowerPacket(power, isEntity));
+
         }
     }
 } 
